@@ -1,0 +1,217 @@
+<%- include("../header"); %>
+  <div>
+    <section class="graficos section">
+      <div class="certificados certificados__areas">
+        <aside class="welcome text-center text-lg-center title-shadow">
+          <h1>Organigrama <i class="icon icon-solid icon-chart"></i></h1>
+        </aside>
+        <aside class="filtros-grafico">
+          <div class="filtros-radios d-grid gap-2">
+            <h4>
+              Layout
+            </h4>
+            <div>
+              <form id="rLayout" name="rLayout">
+                <input type="radio" name="layout" value="circular" id="circular">
+                <label for="circular">Circular </label>
+                <br>
+                <input type="radio" name="layout" value="force" id="force">
+                <label for="force">Force</label>
+                <br>
+                <input type="radio" name="layout" value="none" id="none" checked>
+                <label for="none">Ninguno</label>
+                <br>
+              </form>
+            </div>
+
+          </div>
+          <form method="post" action="/graph/filtrar" class="filtros-categories d-grid gap-2" id="cat-chkb"> <!-- -->
+            <h4>
+              Categorías
+            </h4>
+            <div class="justify-content-md-center gap-2 mx-auto">
+              <% dependencias.forEach(dependencia=> { %>
+                <input type="checkbox" id="<%=dependencia.orden %>" name=filtrados value="<%=dependencia.orden %>">
+                <!--  data-bs-toggle="cat-button" id="<%= dependencia.categorie %>"-->
+                <%= dependencia.categorie %>
+                  <br>
+                  <% })%>
+            </div>
+            <button class="btn btn-primary" id="check-btn">Filtrar</button>
+          </form>
+
+          <form method="post" action="/crearJSON/actualizar" class="d-grid gap-2">
+            <div class="filtros-fecha">
+              <h4>
+                Fecha:
+              </h4>
+              <input type="date" id="fechaActual" class="form-control form-control-sm" name="fechaActual">
+              <button class="btn btn-primary">Actualizar</button>
+              <!-- <a href="/crearJSON" class="btn btn-primary mb-2">Actualizar</a> -->
+            </div>
+          </form>
+        </aside>
+        <article class="parraph-1 text-center">
+          <div id="orgraph" name="orgraph" style="width: auto; height: 600px;">
+
+          </div>
+        </article>
+
+      </div>
+    </section>
+    <script type="text/javascript">
+
+      var fecha = new Date();
+      document.getElementById("fechaActual").value = fecha.toJSON().slice(0, 10);
+
+
+      //Script para graficar
+
+      // Initialize the echarts instance based on the prepared dom
+      var myChart = echarts.init(document.getElementById('orgraph'));
+
+      // Specify the configuration items and data for the chart
+
+      myChart.showLoading();
+
+      $.getJSON('<%= jsonURL %>', function (graph) {
+        option = getJSON(graph, myChart, layoutGraph)
+        // Display the chart using the configuration items and data just specified.
+        myChart.setOption(option);
+      }
+      );
+
+
+      function getJSON(graph, myChart, layout) {
+
+        myChart.hideLoading();
+        graph.nodes.forEach(function (node) {
+          node.label = {
+            show: node.symbolSize > 30
+          };
+        });
+        option = {
+          tooltip: {},
+          legend: [
+            {
+              orient: 'vertical',
+              right: 'right',
+              top: 'middle',
+              data: graph.categories.map(function (a) {
+                return a.name;
+              })
+            }
+          ],
+          series: [
+            {
+              //name: 'Organigrama de la estructura municipal',
+              type: 'graph',
+              layout: layout,
+              symbol: 'circle',
+              emphasis: {
+                focus: 'series'
+              },
+              data: graph.nodes,
+              links: graph.links,
+              categories: graph.categories,
+              roam: true,
+              label: {
+                show: false,
+                position: 'center',
+                formatter: '{b}'
+              },
+              toolbox: {
+                feature: {
+                  dataZoom: {
+                    yAxisIndex: 'none',
+                    icon: {
+                      zoom: 'path://',
+                      back: 'path://',
+                    },
+                  },
+                  saveAsImage: {},
+                }
+              },
+              force: {
+                //initLayout: 'star',
+                gravity: 0.5,
+                repulsion: 100,
+                edgeLength: 15
+              },
+              labelLayout: {
+                hideOverlap: false
+              },
+              scaleLimit: {
+                min: 0.6,
+                max: 3
+              },
+              lineStyle: {
+                color: 'source',
+                curveness: 0.3
+              }
+            }
+          ]
+        };
+        return option
+      }
+
+      var layoutGraph
+      const states = ['circular', 'force', 'none']
+
+      // generate the radio groups        
+      const group = document.querySelector("#rLayout");
+      group.innerHTML = states.map((state) => `<div>
+                <input type="radio" name="state" value="${state}" id="${state}">
+                 <label for="${state}">${this.nombreLabelState(state)}</label>
+            </div>`).join(' ');
+
+      // add an event listener for the change event
+      const radioButtons = document.querySelectorAll('input[name="state"]');
+      for (const radioButton of radioButtons) {
+        radioButton.addEventListener('change', showSelected);
+        if (radioButton.checked) {
+          layoutGraph = radioButton.value;
+          break;
+        }
+
+      }
+
+      function showSelected(e) {
+
+        if (this.checked) {
+          //document.querySelector('#output').innerText = `You selected ${this.value}`;
+          var layout = this.value
+          myChart.showLoading();
+          console.log('en show ')
+          console.log('<%= jsonURL %>')
+          $.getJSON('<%= jsonURL %>', function (graph) {
+
+            option = getJSON(graph, myChart, layout)
+            // Display the chart using the configuration items and data just specified.
+
+            myChart.setOption(option);
+
+          });
+        }
+      }
+
+      function nombreLabelState(state) {
+        switch (state) {
+          case 'circular':
+            return "Circular"
+            break;
+          case 'force':
+            return "Force"
+            break;
+          case 'none':
+            return "Ninguno"
+            break;
+
+          default:
+            break;
+        }
+      }
+
+    </script>
+  </div>
+  <%- include("../footer"); %>
